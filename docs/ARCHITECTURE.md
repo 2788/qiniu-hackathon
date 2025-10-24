@@ -11,7 +11,8 @@
 - **运行时**: Node.js
 - **框架**: Nest.js
 - **语言**: TypeScript
-- **API 风格**: RESTful API / WebSocket
+- **API 风格**: RESTful API
+- **数据库**: SQLite (开发) / PostgreSQL (生产)
 
 #### 前端技术栈
 - **框架**: React
@@ -57,7 +58,7 @@ qiniu-hackathon/
 │  │ 顶部导航  │  │ 会话列表  │  │ 对话区域  │  │ 配置面板  │   │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
 └─────────────────────────────────────────────────────────────┘
-                            ↕ HTTP/WebSocket
+                            ↕ HTTP/SSE
 ┌─────────────────────────────────────────────────────────────┐
 │                        前端应用层                             │
 │  ┌──────────────────┐  ┌──────────────────┐                │
@@ -66,8 +67,8 @@ qiniu-hackathon/
 │  │  - Layout        │  │  - Local State   │                │
 │  └──────────────────┘  └──────────────────┘                │
 │  ┌──────────────────┐  ┌──────────────────┐                │
-│  │   API Client     │  │   WebSocket      │                │
-│  │  - HTTP Client   │  │  - Real-time     │                │
+│  │   API Client     │  │   SSE Client     │                │
+│  │  - HTTP Client   │  │  - Stream        │                │
 │  └──────────────────┘  └──────────────────┘                │
 └─────────────────────────────────────────────────────────────┘
                             ↕ API Calls
@@ -80,20 +81,20 @@ qiniu-hackathon/
                             ↕
 ┌─────────────────────────────────────────────────────────────┐
 │                        数据持久层                             │
-│  ┌──────────────────┐  ┌──────────────────┐                │
-│  │   数据库          │  │   缓存            │                │
-│  │  - 用户数据       │  │  - Redis         │                │
-│  │  - 会话记录       │  │  - Session       │                │
-│  │  - 消息历史       │  │                  │                │
-│  └──────────────────┘  └──────────────────┘                │
+│  ┌──────────────────┐                                       │
+│  │   数据库          │                                       │
+│  │  - 用户数据       │                                       │
+│  │  - 会话记录       │                                       │
+│  │  - 消息历史       │                                       │
+│  └──────────────────┘                                       │
 └─────────────────────────────────────────────────────────────┘
                             ↕
 ┌─────────────────────────────────────────────────────────────┐
 │                        外部服务层                             │
 │  ┌──────────────────┐  ┌──────────────────┐                │
 │  │   AI API 服务     │  │   其他服务        │                │
-│  │  - OpenAI        │  │  - 文件存储       │                │
-│  │  - 其他AI模型     │  │  - 日志服务       │                │
+│  │  - OpenAI        │  │  - 日志服务       │                │
+│  │  - 其他AI模型     │  │                  │                │
 │  └──────────────────┘  └──────────────────┘                │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -104,13 +105,12 @@ qiniu-hackathon/
 - **视图层**: React 组件 + Tailwind CSS
 - **逻辑层**: Custom Hooks + 业务逻辑
 - **数据层**: Context API + Local State
-- **通信层**: API Client + WebSocket Client
+- **通信层**: Fetch API + Server-Sent Events (SSE)
 
 #### 2.2.2 后端架构
 - **控制层**: Controllers (处理 HTTP 请求)
 - **服务层**: Services (业务逻辑)
-- **数据访问层**: Repositories (数据库操作)
-- **网关层**: WebSocket Gateway (实时通信)
+- **数据访问层**: TypeORM / Prisma (数据库操作)
 
 ## 3. 前端架构设计
 
@@ -155,7 +155,7 @@ frontend/src/
 ├── lib/                  # 工具库
 │   ├── api/             # API 客户端
 │   │   ├── client.ts    # HTTP 客户端
-│   │   ├── websocket.ts # WebSocket 客户端
+│   │   ├── stream.ts    # SSE 流式处理
 │   │   └── endpoints.ts # API 端点定义
 │   │
 │   ├── utils/           # 工具函数
@@ -168,7 +168,7 @@ frontend/src/
 ├── hooks/               # 自定义 Hooks
 │   ├── useChat.ts      # 对话管理
 │   ├── useSession.ts   # 会话管理
-│   ├── useWebSocket.ts # WebSocket 连接
+│   ├── useStream.ts    # 流式响应处理
 │   └── useSettings.ts  # 设置管理
 │
 ├── types/              # TypeScript 类型定义
@@ -260,14 +260,46 @@ export function MessageBubble({ role, content, timestamp }: MessageBubbleProps) 
 使用自定义 Hooks 管理服务端状态：
 - API 请求状态
 - 缓存数据
-- 实时消息
+- 流式响应处理
 
 ### 3.4 数据流设计
 
 ```
 用户操作 → 触发事件 → 调用 Hook → 发起 API 请求 → 更新状态 → 重新渲染
                                       ↓
-                            WebSocket 实时消息 → 更新状态 → 重新渲染
+                            SSE 流式响应 → 逐步更新状态 → 实时渲染
+```
+
+### 3.5 流式响应处理
+
+使用 Server-Sent Events (SSE) 实现流式响应：
+
+```typescript
+// hooks/useStream.ts
+export function useStream() {
+  const [content, setContent] = useState('');
+  
+  const streamMessage = async (prompt: string) => {
+    const response = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value);
+      setContent(prev => prev + chunk);
+    }
+  };
+  
+  return { content, streamMessage };
+}
 ```
 
 ## 4. 后端架构设计
@@ -310,7 +342,6 @@ backend/src/
 │   │   ├── message.controller.ts
 │   │   ├── message.service.ts
 │   │   ├── message.module.ts
-│   │   ├── message.gateway.ts
 │   │   ├── entities/
 │   │   │   └── message.entity.ts
 │   │   └── dto/
@@ -395,20 +426,33 @@ DELETE /api/sessions/:id   # 删除会话
 **职责**:
 - 消息发送和接收
 - 消息历史查询
-- 实时消息推送 (WebSocket)
+- 流式响应处理
 
 **主要接口**:
 ```typescript
-POST   /api/messages           # 发送消息
+POST   /api/messages               # 发送消息
+POST   /api/messages/stream        # 流式发送消息 (SSE)
 GET    /api/sessions/:id/messages  # 获取会话消息列表
-DELETE /api/messages/:id       # 删除消息
+DELETE /api/messages/:id           # 删除消息
 ```
 
-**WebSocket 事件**:
+**流式响应实现**:
 ```typescript
-message:send      # 客户端发送消息
-message:received  # 服务端推送消息
-message:typing    # 正在输入状态
+@Post('stream')
+async streamMessage(@Body() dto: CreateMessageDto, @Res() res: Response) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  const stream = await this.aiService.generateStream(dto.content);
+  
+  for await (const chunk of stream) {
+    res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+  }
+  
+  res.write('data: [DONE]\n\n');
+  res.end();
+}
 ```
 
 #### 4.2.5 AI 服务模块 (AI)
@@ -426,8 +470,16 @@ export class AIService {
     prompt: string,
     model: string,
     options: AIOptions
-  ): Promise<AsyncIterable<string>> {
-    // 调用 AI API 生成响应
+  ): Promise<string> {
+    // 调用 AI API 生成完整响应
+  }
+  
+  async *generateStream(
+    prompt: string,
+    model: string,
+    options: AIOptions
+  ): AsyncGenerator<string> {
+    // 调用 AI API 生成流式响应
   }
   
   async getSupportedModels(): Promise<Model[]> {
@@ -545,51 +597,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 }
 ```
 
-### 4.5 WebSocket 实时通信
-
-#### 4.5.1 消息网关设计
-```typescript
-@WebSocketGateway({
-  cors: {
-    origin: '*',
-  },
-})
-export class MessageGateway {
-  @WebSocketServer()
-  server: Server;
-
-  @SubscribeMessage('message:send')
-  async handleMessage(
-    @MessageBody() data: CreateMessageDto,
-    @ConnectedSocket() client: Socket,
-  ) {
-    // 处理消息发送
-    const response = await this.aiService.generateResponse(data.content);
-    
-    // 流式推送响应
-    for await (const chunk of response) {
-      client.emit('message:chunk', { chunk });
-    }
-    
-    client.emit('message:complete', { message: response });
-  }
-}
-```
-
-#### 4.5.2 连接管理
-- 用户连接认证
-- 连接状态管理
-- 断线重连处理
-- 心跳检测
-
 ## 5. 数据流设计
 
 ### 5.1 消息发送流程
 
 ```
-1. 用户输入 → 2. 前端验证 → 3. WebSocket 发送
+1. 用户输入 → 2. 前端验证 → 3. HTTP POST 请求
                                     ↓
-8. UI 更新 ← 7. 前端接收 ← 6. 推送消息 ← 5. AI 生成 ← 4. 后端处理
+8. UI 更新 ← 7. 前端接收流 ← 6. SSE 推送 ← 5. AI 生成 ← 4. 后端处理
                                     ↓
                               数据库保存
 ```
@@ -621,51 +636,53 @@ export class MessageGateway {
 ### 6.2 数据安全
 - 密码加密存储 (bcrypt)
 - HTTPS 传输加密
-- SQL 注入防护
-- XSS 攻击防护
+- SQL 注入防护 (使用 ORM)
+- XSS 攻击防护 (输入清理、输出转义)
 
 ### 6.3 接口安全
-- 请求频率限制
+- 请求频率限制 (Rate Limiting)
 - API Key 管理
 - CORS 配置
-- 输入验证
+- 输入验证和清理
 
 ## 7. 性能优化
 
 ### 7.1 前端优化
-- 代码分割和懒加载
+- 代码分割和懒加载 (Next.js 自动实现)
 - 图片懒加载
 - 虚拟滚动 (长消息列表)
 - 防抖和节流
-- 缓存策略
+- 客户端缓存策略
 
 ### 7.2 后端优化
 - 数据库索引优化
-- 查询结果缓存 (Redis)
+- 查询优化 (避免 N+1 问题)
 - 连接池管理
 - 异步处理
-- 限流和降级
+- 简单的内存缓存
 
 ### 7.3 通信优化
-- WebSocket 连接复用
-- 消息压缩
-- 流式响应
-- CDN 加速
+- HTTP/2 支持
+- 流式响应 (SSE)
+- 响应压缩 (Gzip)
+- CDN 加速 (静态资源)
 
 ## 8. 部署架构
 
 ### 8.1 开发环境
 ```
-开发者本地 → localhost:3000 (前端) + localhost:4000 (后端)
+开发者本地 → localhost:3000 (前端) + localhost:4000 (后端) + SQLite
 ```
 
 ### 8.2 生产环境
 ```
-用户 → CDN → Nginx → Next.js 服务器
-                  ↓
-                  Nest.js 服务器 → 数据库 (PostgreSQL)
-                  ↓              ↓
-                  Redis 缓存     AI API 服务
+用户 → CDN (静态资源) → Nginx (反向代理)
+                           ↓
+                    Next.js 服务器 (前端)
+                           ↓
+                    Nest.js 服务器 (后端)
+                           ↓
+                    PostgreSQL (数据库) → AI API 服务
 ```
 
 ### 8.3 容器化部署
@@ -684,25 +701,29 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - DATABASE_URL=postgresql://...
-      - REDIS_URL=redis://...
+      - DATABASE_URL=postgresql://user:pass@db:5432/chatbot
+      - JWT_SECRET=${JWT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       - db
-      - redis
       
   db:
     image: postgres:15
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=chatbot
     volumes:
       - pgdata:/var/lib/postgresql/data
-      
-  redis:
-    image: redis:7-alpine
+
+volumes:
+  pgdata:
 ```
 
 ## 9. 监控和日志
 
 ### 9.1 日志系统
-- 应用日志 (Winston)
+- 应用日志 (Winston / Pino)
 - 访问日志
 - 错误日志
 - 审计日志
@@ -710,7 +731,6 @@ services:
 ### 9.2 监控指标
 - API 响应时间
 - 数据库查询性能
-- WebSocket 连接数
 - 错误率统计
 - 资源使用率
 
@@ -718,34 +738,31 @@ services:
 - 错误率告警
 - 性能告警
 - 资源告警
-- 业务告警
 
 ## 10. 扩展性设计
 
 ### 10.1 水平扩展
 - 无状态服务设计
 - 负载均衡
-- 分布式会话
-- 数据库读写分离
+- 数据库读写分离 (按需)
 
 ### 10.2 功能扩展
-- 插件系统
-- 多租户支持
 - 多语言支持
 - 主题定制
+- 导出对话历史
+- 分享对话功能
 
 ### 10.3 接口扩展
-- GraphQL API (可选)
-- gRPC 服务 (可选)
-- 消息队列集成
+- 更多 AI 模型支持
 - 第三方集成
+- Webhook 支持
 
 ## 11. 开发规范
 
 ### 11.1 代码规范
 - ESLint + Prettier
 - TypeScript 严格模式
-- Git Commit 规范
+- Git Commit 规范 (Conventional Commits)
 - 代码审查流程
 
 ### 11.2 测试策略
@@ -755,31 +772,37 @@ services:
 - API 测试
 
 ### 11.3 文档规范
-- API 文档 (Swagger)
+- API 文档 (Swagger / OpenAPI)
 - 代码注释
 - 架构文档
 - 部署文档
 
 ## 12. 总结
 
-本架构设计基于现代化的技术栈，采用前后端分离的架构模式，具有以下特点：
+本架构设计基于现代化的技术栈，采用前后端分离的架构模式，注重简洁和实用性：
 
 ### 12.1 技术优势
 - **前端**: Next.js + React + TypeScript 提供类型安全和优秀的开发体验
 - **后端**: Nest.js 提供企业级的架构设计和模块化能力
-- **实时通信**: WebSocket 实现流畅的实时对话体验
+- **实时通信**: Server-Sent Events (SSE) 实现流式响应，简单高效
 - **可扩展性**: 模块化设计便于功能扩展和维护
 
 ### 12.2 系统特性
-- **高性能**: 流式响应、缓存优化、数据库索引优化
+- **简洁高效**: 避免过度设计，使用成熟的技术方案
+- **易于部署**: 最小化依赖，降低运维复杂度
 - **安全性**: JWT 认证、数据加密、接口防护
 - **可维护性**: 清晰的代码结构、完善的文档、测试覆盖
-- **用户体验**: 深色主题、实时响应、流畅动画
+- **用户体验**: 深色主题、流式响应、流畅动画
 
-### 12.3 后续优化方向
-- 引入消息队列处理异步任务
-- 实现分布式部署和负载均衡
+### 12.3 架构特点
+- **无需 WebSocket**: 使用 HTTP + SSE 实现流式响应，降低复杂度
+- **无需 Redis**: 使用简单的内存缓存和数据库优化
+- **无需消息队列**: 直接调用 AI API，异步处理即可满足需求
+- **数据库灵活**: 开发环境使用 SQLite，生产环境使用 PostgreSQL
+
+### 12.4 后续优化方向
 - 添加更多 AI 模型支持
 - 完善监控和告警系统
 - 优化数据库查询性能
 - 实现智能缓存策略
+- 支持更多文件格式和富文本内容
