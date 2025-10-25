@@ -1,12 +1,13 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
+  BeforeInsert,
 } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { Session } from '../session/session.entity';
 
 export enum MessageRole {
@@ -19,8 +20,15 @@ export enum MessageRole {
 @Index('idx_messages_session_id', ['sessionId'])
 @Index('idx_messages_created_at', ['createdAt'])
 export class Message {
-  @PrimaryGeneratedColumn('uuid')
+  @Column({ type: 'uuid', primary: true })
   id: string;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = randomUUID();
+    }
+  }
 
   @Column({ name: 'session_id', type: 'uuid' })
   sessionId: string;
