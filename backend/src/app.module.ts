@@ -8,6 +8,7 @@ import databaseConfig, { typeOrmConfigFactory } from './config/database.config';
 import { SessionModule } from './modules/session/session.module';
 import { MessageModule } from './modules/message/message.module';
 import { AiModule } from './modules/ai/ai.module';
+import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AiModule } from './modules/ai/ai.module';
     SessionModule,
     MessageModule,
     AiModule,
+    KnowledgeBaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

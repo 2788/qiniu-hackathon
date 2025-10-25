@@ -1,0 +1,42 @@
+[
+  {
+    "id": 397413,
+    "title": "现在SSL证书是不能通过云存储做文件验证了么?",
+    "description": "将附件(文件验证)传到了云存储下,但访问显示异常",
+    "category": "对象存储｜其他类咨询",
+    "replies": [
+      {
+        "content": "<p><img src=\"https://dn-odum9helk.qbox.me/FgEDDpDI3IUqocmnR4wszBwdZQt3\" style=\"width: 486.797px;\"></p><p>将附件(文件验证)传到了云存储下,但访问:http://media.tek.cn/.well-known/pki-validation/D1D218AEA9729B48EA10BE971DEE3D0D.txt 显示如下内容</p>",
+        "owner": "customer"
+      },
+      {
+        "content": "<p>您好</p><p>先把私有空间属性关闭一下 访问 https://media.tek.cn/.well-known/pki-validation/D1D218AEA9729B48EA10BE971DEE3D0D.txt 显示以下内容才可以验证通过</p><p><br></p><pre class=\"ql-syntax\" spellcheck=\"false\">0A321E7D3000CF01DA24E8B21973DFF2EC528D4342B93EB305FEA1ADCDA5FB0B\\ntrust-provider.com\\ncmcdt3t34wgals\\n</pre>",
+        "owner": "agent"
+      },
+      {
+        "content": "<p>确认没问题,谢谢</p>",
+        "owner": "customer"
+      }
+    ]
+  },
+  {
+    "id": 436998,
+    "title": "新增的域名一直处理中",
+    "description": "新增的域名一直处理中",
+    "category": "CDN｜配置问题",
+    "replies": [
+      {
+        "content": "<p>新增的域名一直处理中<br></p>",
+        "owner": "customer"
+      },
+      {
+        "content": "<p>为什么域名不会访问到index.html页面<br></p>",
+        "owner": "customer"
+      },
+      {
+        "content": "<p>您好,抱歉让您久等了,已经处理完成,您确认下。</p>",
+        "owner": "agent"
+      }
+    ]
+  }
+]
