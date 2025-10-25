@@ -1,20 +1,28 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   Index,
   OneToMany,
+  BeforeInsert,
 } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { Message } from '../message/message.entity';
 
 @Entity('sessions')
 @Index('idx_sessions_user_id', ['userId'])
 @Index('idx_sessions_updated_at', ['updatedAt'])
 export class Session {
-  @PrimaryGeneratedColumn('uuid')
+  @Column({ type: 'uuid', primary: true })
   id: string;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = randomUUID();
+    }
+  }
 
   @Column({ name: 'user_id', type: 'varchar', length: 36 })
   userId: string;
