@@ -99,4 +99,85 @@ export class KnowledgeBaseService {
     await this.kbTicketRepository.delete({});
     this.logger.log('All knowledge base data cleared');
   }
+
+  async searchRelevantTickets(
+    query: string,
+    limit: number = 3,
+  ): Promise<KbTicket[]> {
+    const keywords = this.extractKeywords(query);
+
+    if (keywords.length === 0) {
+      return [];
+    }
+
+    const tickets = await this.kbTicketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.replies', 'reply')
+      .where(
+        'ticket.title ILIKE ANY(ARRAY[:...keywords]) OR ticket.description ILIKE ANY(ARRAY[:...keywords])',
+        {
+          keywords: keywords.map((k) => `%${k}%`),
+        },
+      )
+      .orderBy('reply.sequenceOrder', 'ASC')
+      .take(limit)
+      .getMany();
+
+    return tickets;
+  }
+
+  private extractKeywords(text: string): string[] {
+    if (!text) return [];
+
+    return text
+      .split(/[\s,。!?、:;，！？：；]+/)
+      .filter((word) => word.length >= 2)
+      .slice(0, 10);
+  }
+
+  formatAsContext(tickets: KbTicket[]): string {
+    if (tickets.length === 0) return '';
+
+    let context = '以下是相关的历史客服案例供参考:\n\n';
+
+    tickets.forEach((ticket, idx) => {
+      context += `【案例${idx + 1}】\n`;
+      context += `分类: ${ticket.category || '未分类'}\n`;
+      context += `问题: ${ticket.title}\n`;
+
+      if (ticket.description) {
+        context += `描述: ${this.stripHtml(ticket.description)}\n`;
+      }
+
+      if (ticket.replies && ticket.replies.length > 0) {
+        context += `对话记录:\n`;
+
+        ticket.replies.forEach((reply) => {
+          const speaker = reply.owner === KbReplyOwner.CUSTOMER ? '用户' : '客服';
+          const content = this.stripHtml(reply.content);
+          context += `${speaker}: ${content}\n`;
+        });
+      }
+
+      context += '\n';
+    });
+
+    return context;
+  }
+
+  private stripHtml(html: string): string {
+    if (!html) return '';
+
+    return html
+      .replace(/<img[^>]*>/gi, '[图片]')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+  }
 }
