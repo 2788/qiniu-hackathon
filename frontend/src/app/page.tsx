@@ -14,8 +14,10 @@ export default function Home() {
     sessions,
     currentSession,
     currentSessionId,
+    isPendingNewChat,
     isLoading: sessionLoading,
     createSession,
+    startNewChat,
     deleteSession,
     selectSession,
   } = useSession();
@@ -25,7 +27,11 @@ export default function Home() {
     isLoading: chatLoading,
     sendMessage,
     messagesEndRef,
-  } = useChat(currentSessionId);
+  } = useChat({
+    sessionId: currentSessionId,
+    isPendingNewChat,
+    createSession,
+  });
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -37,7 +43,7 @@ export default function Home() {
             currentSessionId={currentSessionId}
             onSelectSession={selectSession}
             onDeleteSession={deleteSession}
-            onCreateSession={() => createSession()}
+            onCreateSession={startNewChat}
             isLoading={sessionLoading}
           />
         </Sidebar>
@@ -48,6 +54,7 @@ export default function Home() {
             onSendMessage={sendMessage}
             messagesEndRef={messagesEndRef}
             sessionId={currentSessionId}
+            isPendingNewChat={isPendingNewChat}
           />
         </main>
         <ConfigPanel>
