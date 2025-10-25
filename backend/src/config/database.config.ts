@@ -2,6 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Session } from '../modules/session/session.entity';
 import { Message } from '../modules/message/message.entity';
+import { KnowledgeBase } from '../modules/knowledge/knowledge.entity';
 
 export default () => ({
   database: {
@@ -23,7 +24,7 @@ export const typeOrmConfigFactory = (
   username: configService.get<string>('database.username'),
   password: configService.get<string>('database.password'),
   database: configService.get<string>('database.database'),
-  entities: [Session, Message],
+  entities: [Session, Message, KnowledgeBase],
   synchronize: configService.get<string>('NODE_ENV') !== 'production',
   logging: configService.get<string>('NODE_ENV') === 'development',
 });
