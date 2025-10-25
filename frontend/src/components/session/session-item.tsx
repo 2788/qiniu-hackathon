@@ -45,7 +45,7 @@ export function SessionItem({ session, isActive, onSelect, onDelete }: SessionIt
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">
+          <div className="font-medium text-sm truncate text-ellipsis" style={{ maxWidth: '200px' }}>
             {session.title || 'New Chat'}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
