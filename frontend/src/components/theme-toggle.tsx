@@ -60,7 +60,7 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button variant="ghost" size="sm" className="gap-2 cursor-pointer">
           {getIcon(theme)}
           <span className="text-sm">{getLabel(theme)}</span>
         </Button>
