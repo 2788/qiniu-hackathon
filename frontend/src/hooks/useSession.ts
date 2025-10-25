@@ -7,7 +7,7 @@ import type { Session } from '@/types/session';
 export function useSession() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [isPendingNewChat, setIsPendingNewChat] = useState(false);
+  const [isPendingNewChat, setIsPendingNewChat] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
