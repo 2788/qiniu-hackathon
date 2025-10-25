@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSessions, createSession as createSessionApi, deleteSession as deleteSessionApi, type CreateSessionDto } from '@/lib/api';
 import type { Session } from '@/types/session';
 
 export function useSession() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isPendingNewChat, setIsPendingNewChat] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -18,15 +22,23 @@ export function useSession() {
       const data = await getSessions();
       setSessions(data);
       
-      if (data.length > 0 && !currentSessionId && !isPendingNewChat) {
-        setCurrentSessionId(data[0].id);
+      if (!isInitialized) {
+        const sessionIdFromUrl = searchParams.get('session');
+        if (sessionIdFromUrl && data.some(s => s.id === sessionIdFromUrl)) {
+          setCurrentSessionId(sessionIdFromUrl);
+          setIsPendingNewChat(false);
+        } else if (data.length > 0 && !isPendingNewChat) {
+          setCurrentSessionId(data[0].id);
+          setIsPendingNewChat(false);
+        }
+        setIsInitialized(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
     } finally {
       setIsLoading(false);
     }
-  }, [currentSessionId, isPendingNewChat]);
+  }, [searchParams, isInitialized, isPendingNewChat]);
 
   const createSession = useCallback(async (model: string = 'gpt-3.5-turbo', title?: string) => {
     try {
@@ -40,6 +52,7 @@ export function useSession() {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       setIsPendingNewChat(false);
+      router.push(`?session=${newSession.id}`);
       return newSession;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session');
@@ -47,12 +60,13 @@ export function useSession() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const startNewChat = useCallback(() => {
     setCurrentSessionId(null);
     setIsPendingNewChat(true);
-  }, []);
+    router.push('/');
+  }, [router]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -81,7 +95,8 @@ export function useSession() {
   const selectSession = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
     setIsPendingNewChat(false);
-  }, []);
+    router.push(`?session=${sessionId}`);
+  }, [router]);
 
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
 
