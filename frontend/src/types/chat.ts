@@ -1,12 +1,16 @@
+export type MessageRole = 'user' | 'assistant' | 'system';
+
 export interface Message {
   id: string;
   sessionId: string;
-  role: 'user' | 'assistant' | 'system';
+  role: MessageRole;
   content: string;
-  createdAt: Date;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface ChatState {
   messages: Message[];
   isLoading: boolean;
+  error?: string | null;
 }
