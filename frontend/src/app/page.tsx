@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { ConfigPanel } from '@/components/layout/config-panel';
@@ -9,7 +10,7 @@ import { SettingsPanel } from '@/components/config/settings-panel';
 import { useSession } from '@/hooks/useSession';
 import { useChat } from '@/hooks/useChat';
 
-export default function Home() {
+function HomeContent() {
   const {
     sessions,
     currentSession,
@@ -62,5 +63,17 @@ export default function Home() {
         </ConfigPanel>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
