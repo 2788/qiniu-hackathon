@@ -7,6 +7,7 @@ import type { Session } from '@/types/session';
 export function useSession() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isPendingNewChat, setIsPendingNewChat] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +18,7 @@ export function useSession() {
       const data = await getSessions();
       setSessions(data);
       
-      if (data.length > 0 && !currentSessionId) {
+      if (data.length > 0 && !currentSessionId && !isPendingNewChat) {
         setCurrentSessionId(data[0].id);
       }
     } catch (err) {
@@ -25,7 +26,7 @@ export function useSession() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, isPendingNewChat]);
 
   const createSession = useCallback(async (model: string = 'gpt-3.5-turbo', title?: string) => {
     try {
@@ -38,6 +39,7 @@ export function useSession() {
       const newSession = await createSessionApi(data);
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
+      setIsPendingNewChat(false);
       return newSession;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session');
@@ -45,6 +47,11 @@ export function useSession() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const startNewChat = useCallback(() => {
+    setCurrentSessionId(null);
+    setIsPendingNewChat(true);
   }, []);
 
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -56,8 +63,10 @@ export function useSession() {
         const filtered = prev.filter(s => s.id !== sessionId);
         if (currentSessionId === sessionId && filtered.length > 0) {
           setCurrentSessionId(filtered[0].id);
+          setIsPendingNewChat(false);
         } else if (filtered.length === 0) {
           setCurrentSessionId(null);
+          setIsPendingNewChat(false);
         }
         return filtered;
       });
@@ -71,6 +80,7 @@ export function useSession() {
 
   const selectSession = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
+    setIsPendingNewChat(false);
   }, []);
 
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
@@ -83,9 +93,11 @@ export function useSession() {
     sessions,
     currentSession,
     currentSessionId,
+    isPendingNewChat,
     isLoading,
     error,
     createSession,
+    startNewChat,
     deleteSession,
     selectSession,
     refreshSessions: loadSessions,
