@@ -1,11 +1,12 @@
 # qiniu-hackathon
-hackathon for AI
+
+议题1：智能客服
 
 ## 本地开发运行说明
 
 ### 环境要求
 - Node.js 22
-- Docker 和 Docker Compose（用于数据库）
+- PostgreSQL
 
 ### 快速开始
 
@@ -20,20 +21,16 @@ cd ../backend
 npm install
 ```
 
-2. 启动开发环境
+2. 准备数据库
 
-**使用 Docker Compose（推荐）**
+- 创建表及建立索引，见 [db.sql](./db.sql) 文件
+- 导入客服数据参考 [DEPLOYMENT.md](./backend/data/DEPLOYMENT.md)
+
+
+3. 启动开发环境
+
+**分别启动**
 ```bash
-# 在项目根目录执行
-docker-compose up
-```
-访问 http://localhost:3000 查看前端应用，后端 API 运行在 http://localhost:4000
-
-**或者分别启动**
-```bash
-# 启动数据库
-docker-compose up db
-
 # 启动后端（在 backend 目录）
 npm run start:dev
 
@@ -41,7 +38,8 @@ npm run start:dev
 npm run dev
 ```
 
+访问 http://localhost:3000 查看前端应用，后端 API 运行在 http://localhost:4000
+
 ### 项目结构
 - `frontend/` - Next.js 前端应用（端口 3000）
 - `backend/` - NestJS 后端应用（端口 4000）
-- `docker-compose.yml` - Docker 编排配置
