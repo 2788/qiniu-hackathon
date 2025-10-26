@@ -1,4 +1,10 @@
-import { Entity, Column, CreateDateColumn, Index, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  CreateDateColumn,
+  Index,
+  BeforeInsert,
+} from 'typeorm';
 import { randomUUID } from 'crypto';
 
 @Entity('knowledge_base')
