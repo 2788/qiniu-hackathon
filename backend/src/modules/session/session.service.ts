@@ -14,10 +14,7 @@ export class SessionService {
     private aiService: AiService,
   ) {}
 
-  async create(
-    userId: string,
-    createSessionDto: CreateSessionDto,
-  ): Promise<Session> {
+  async create(userId: string, createSessionDto: CreateSessionDto): Promise<Session> {
     const session = this.sessionRepository.create({
       userId,
       ...createSessionDto,
