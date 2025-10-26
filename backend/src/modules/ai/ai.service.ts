@@ -102,4 +102,27 @@ export class AiService {
       }
     }
   }
+
+  async generateTitle(firstMessage: string, model: string): Promise<string> {
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: '你是一个专业的标题生成助手。请根据用户的第一条消息,生成一个简短、准确的会话标题。标题应该:1)不超过20个字;2)准确概括对话主题;3)直接返回标题文本,不要添加引号或其他符号。',
+      },
+      {
+        role: 'user',
+        content: `请为以下对话生成一个简短的标题:\n\n${firstMessage}`,
+      },
+    ];
+
+    const response = await this.openai.chat.completions.create({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 50,
+    });
+
+    const title = response.choices[0]?.message?.content?.trim() || '';
+    return title.replace(/^["']|["']$/g, '');
+  }
 }

@@ -127,3 +127,10 @@ export async function deleteMessage(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+export async function generateSessionTitle(sessionId: string, firstMessage: string): Promise<Session> {
+  return fetchWithAuth(`/api/sessions/${sessionId}/generate-title`, {
+    method: 'POST',
+    body: JSON.stringify({ firstMessage }),
+  });
+}

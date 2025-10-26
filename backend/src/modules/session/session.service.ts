@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Session } from './session.entity';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class SessionService {
   constructor(
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
+    private aiService: AiService,
   ) {}
 
   async create(userId: string, createSessionDto: CreateSessionDto): Promise<Session> {
@@ -58,5 +60,12 @@ export class SessionService {
     await this.sessionRepository.update(id, {
       lastMessageAt: new Date(),
     });
+  }
+
+  async generateTitle(id: string, userId: string, firstMessage: string): Promise<Session> {
+    const session = await this.findOne(id, userId);
+    const title = await this.aiService.generateTitle(firstMessage, session.model);
+    session.title = title;
+    return this.sessionRepository.save(session);
   }
 }

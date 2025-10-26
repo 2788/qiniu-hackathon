@@ -99,6 +99,10 @@ export function useSession() {
     router.push(`?session=${sessionId}`);
   }, [router]);
 
+  const updateSessionInList = useCallback((updatedSession: Session) => {
+    setSessions(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s));
+  }, []);
+
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
 
   useEffect(() => {
@@ -116,6 +120,7 @@ export function useSession() {
     startNewChat,
     deleteSession,
     selectSession,
+    updateSessionInList,
     refreshSessions: loadSessions,
   };
 }
