@@ -38,17 +38,7 @@ cp /path/to/your/customer-service.json backend/data/customer-service.json
 
 ### 2. 创建数据库表
 
-执行数据库迁移脚本:
-
-```bash
-psql -h localhost -U chatbot -d chatbot -f backend/migrations/001_create_knowledge_base.sql
-```
-
-或使用 Docker:
-
-```bash
-docker exec -i postgres_container psql -U chatbot -d chatbot < backend/migrations/001_create_knowledge_base.sql
-```
+[db.sql](../migrations/db.sql)
 
 ### 3. 导入数据
 
