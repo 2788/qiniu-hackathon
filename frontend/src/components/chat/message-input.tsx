@@ -33,7 +33,7 @@ export function MessageInput({ onSendMessage, isLoading }: MessageInputProps) {
   };
 
   return (
-    <div className="border-t border-border bg-card p-4">
+    <div className="border-t border-border bg-card p-4 sticky bottom-0">
       <div className="max-w-4xl mx-auto flex gap-2">
         <Textarea
           value={input}

@@ -28,7 +28,7 @@ export function SessionList({
         <Button
           onClick={onCreateSession}
           disabled={isLoading}
-          className="w-full"
+          className="w-full cursor-pointer"
         >
           + New Chat
         </Button>
