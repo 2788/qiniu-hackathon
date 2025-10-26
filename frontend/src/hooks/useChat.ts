@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getMessages, sendMessage as sendMessageApi } from '@/lib/api';
+import { getMessages, sendMessageStream } from '@/lib/api';
 import type { Message } from '@/types/chat';
 
 interface UseChatProps {
@@ -54,13 +54,54 @@ export function useChat({ sessionId, isPendingNewChat, createSession }: UseChatP
         throw new Error('No session available');
       }
 
-      const response = await sendMessageApi(targetSessionId, content.trim());
-      setMessages(prev => [...prev, response.userMessage, response.assistantMessage]);
+      let streamingMessage: Message | null = null;
+
+      const cleanup = sendMessageStream(
+        targetSessionId,
+        content.trim(),
+        (data) => {
+          if (data.type === 'user_message') {
+            setMessages(prev => [...prev, data.data]);
+          } else if (data.type === 'content') {
+            if (!streamingMessage) {
+              streamingMessage = {
+                id: 'streaming',
+                sessionId: targetSessionId!,
+                role: 'assistant',
+                content: data.data,
+                createdAt: new Date().toISOString(),
+              };
+              setMessages(prev => [...prev, streamingMessage!]);
+            } else {
+              streamingMessage.content += data.data;
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                if (newMessages[lastIndex]?.id === 'streaming') {
+                  newMessages[lastIndex] = { ...streamingMessage! };
+                }
+                return newMessages;
+              });
+            }
+          } else if (data.type === 'done') {
+            setMessages(prev => {
+              const newMessages = prev.filter(msg => msg.id !== 'streaming');
+              return [...newMessages, data.data];
+            });
+          }
+        },
+        (error) => {
+          setError(error.message);
+          setIsLoading(false);
+        },
+        () => {
+          setIsLoading(false);
+        }
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
-      throw err;
-    } finally {
       setIsLoading(false);
+      throw err;
     }
   }, [sessionId, isPendingNewChat, createSession]);
 

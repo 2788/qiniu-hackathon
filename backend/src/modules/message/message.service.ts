@@ -69,4 +69,50 @@ export class MessageService {
 
     return { userMessage, assistantMessage };
   }
+
+  async *sendMessageStream(
+    sessionId: string,
+    userId: string,
+    content: string,
+  ): AsyncGenerator<
+    { type: 'user_message' | 'content' | 'done'; data: any },
+    void,
+    unknown
+  > {
+    const session = await this.sessionService.findOne(sessionId, userId);
+
+    const userMessage = await this.create({
+      sessionId,
+      role: MessageRole.USER,
+      content,
+    });
+
+    yield { type: 'user_message', data: userMessage };
+
+    const messageHistory = await this.findBySession(sessionId);
+    const chatMessages = messageHistory.map((msg) => ({
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content,
+    }));
+
+    let fullContent = '';
+
+    for await (const chunk of this.aiService.generateResponseStream(
+      chatMessages,
+      session.model,
+    )) {
+      fullContent += chunk;
+      yield { type: 'content', data: chunk };
+    }
+
+    const assistantMessage = await this.create({
+      sessionId,
+      role: MessageRole.ASSISTANT,
+      content: fullContent,
+    });
+
+    await this.sessionService.updateLastMessageAt(sessionId);
+
+    yield { type: 'done', data: assistantMessage };
+  }
 }

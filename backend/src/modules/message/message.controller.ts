@@ -5,9 +5,13 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { MessageService } from './message.service';
 import { UserId } from '../../common/decorators/user-id.decorator';
 
@@ -31,6 +35,32 @@ export class MessageController {
       userId,
       sendMessageDto.content,
     );
+  }
+
+  @Sse('stream')
+  sendMessageStream(
+    @Query('userId') userId: string,
+    @Query('sessionId') sessionId: string,
+    @Query('content') content: string,
+  ): Observable<MessageEvent> {
+    return new Observable<MessageEvent>((observer) => {
+      (async () => {
+        try {
+          for await (const event of this.messageService.sendMessageStream(
+            sessionId,
+            userId,
+            content,
+          )) {
+            observer.next({
+              data: event,
+            });
+          }
+          observer.complete();
+        } catch (error) {
+          observer.error(error);
+        }
+      })();
+    });
   }
 
   @Delete(':id')

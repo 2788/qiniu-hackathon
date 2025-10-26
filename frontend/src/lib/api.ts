@@ -76,6 +76,48 @@ export async function sendMessage(sessionId: string, content: string): Promise<S
   });
 }
 
+export function sendMessageStream(
+  sessionId: string,
+  content: string,
+  onMessage: (data: { type: string; data: any }) => void,
+  onError?: (error: Error) => void,
+  onComplete?: () => void,
+): () => void {
+  const userId = getUserId();
+  const params = new URLSearchParams({
+    sessionId,
+    content,
+    userId,
+  });
+  
+  const eventSource = new EventSource(
+    `${API_BASE_URL}/api/messages/stream?${params}`
+  );
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      onMessage(data);
+      
+      if (data.type === 'done') {
+        eventSource.close();
+        onComplete?.();
+      }
+    } catch (error) {
+      console.error('Failed to parse SSE data:', error);
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    eventSource.close();
+    onError?.(new Error('SSE connection error'));
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}
+
 export async function getMessages(sessionId: string): Promise<Message[]> {
   return fetchWithAuth(`/api/sessions/${sessionId}/messages`);
 }

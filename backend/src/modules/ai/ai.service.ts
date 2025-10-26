@@ -59,4 +59,47 @@ export class AiService {
 
     return response.choices[0]?.message?.content || '';
   }
+
+  async *generateResponseStream(
+    messages: ChatMessage[],
+    model: string,
+  ): AsyncGenerator<string, void, unknown> {
+    const userQuery = messages[messages.length - 1]?.content || '';
+
+    const relevantTickets = await this.knowledgeService.searchRelevant(
+      userQuery,
+      3,
+    );
+    const knowledgeContext =
+      this.knowledgeService.formatAsContext(relevantTickets);
+
+    const enhancedMessages: ChatMessage[] = [];
+
+    if (knowledgeContext) {
+      enhancedMessages.push({
+        role: 'system',
+        content: `你是七牛云的智能客服助手。${knowledgeContext}\n请基于历史案例和你的知识回答用户问题。`,
+      });
+    } else {
+      enhancedMessages.push({
+        role: 'system',
+        content: '你是七牛云的智能客服助手。',
+      });
+    }
+
+    enhancedMessages.push(...messages);
+
+    const stream = await this.openai.chat.completions.create({
+      model,
+      messages: enhancedMessages,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        yield content;
+      }
+    }
+  }
 }
