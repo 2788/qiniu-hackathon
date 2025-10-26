@@ -17,10 +17,15 @@ export function useChat({ sessionId, isPendingNewChat, createSession, updateSess
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isSendingMessageRef = useRef(false);
 
   const loadMessages = useCallback(async () => {
     if (!sessionId) {
       setMessages([]);
+      return;
+    }
+
+    if (isSendingMessageRef.current) {
       return;
     }
 
@@ -42,6 +47,7 @@ export function useChat({ sessionId, isPendingNewChat, createSession, updateSess
     }
 
     try {
+      isSendingMessageRef.current = true;
       setIsLoading(true);
       setError(null);
 
@@ -97,9 +103,11 @@ export function useChat({ sessionId, isPendingNewChat, createSession, updateSess
         (error) => {
           setError(error.message);
           setIsLoading(false);
+          isSendingMessageRef.current = false;
         },
         () => {
           setIsLoading(false);
+          isSendingMessageRef.current = false;
         }
       );
 
@@ -115,6 +123,7 @@ export function useChat({ sessionId, isPendingNewChat, createSession, updateSess
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
       setIsLoading(false);
+      isSendingMessageRef.current = false;
       throw err;
     }
   }, [sessionId, isPendingNewChat, createSession, updateSessionInList]);
