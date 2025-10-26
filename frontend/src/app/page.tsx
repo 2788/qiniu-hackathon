@@ -3,17 +3,14 @@
 import { Suspense } from 'react';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
-import { ConfigPanel } from '@/components/layout/config-panel';
 import { SessionList } from '@/components/session/session-list';
 import { ChatArea } from '@/components/chat/chat-area';
-import { SettingsPanel } from '@/components/config/settings-panel';
 import { useSession } from '@/hooks/useSession';
 import { useChat } from '@/hooks/useChat';
 
 function HomeContent() {
   const {
     sessions,
-    currentSession,
     currentSessionId,
     isPendingNewChat,
     isLoading: sessionLoading,
@@ -58,9 +55,6 @@ function HomeContent() {
             isPendingNewChat={isPendingNewChat}
           />
         </main>
-        <ConfigPanel>
-          <SettingsPanel currentSession={currentSession} />
-        </ConfigPanel>
       </div>
     </div>
   );

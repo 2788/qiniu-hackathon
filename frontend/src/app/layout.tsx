@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Chat - 智能客服系统",
+  title: "七牛智能客服系统",
   description: "AI-powered customer service chat system",
 };
 
