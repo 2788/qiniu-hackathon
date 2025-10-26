@@ -23,7 +23,7 @@ npm install
 
 2. 准备数据库
 
-- 创建表及建立索引，见 [db.sql](./db.sql) 文件
+- 创建表及建立索引，见 [db.sql](./backend/migrations/db.sql) 文件
 - 导入客服数据参考 [DEPLOYMENT.md](./backend/data/DEPLOYMENT.md)
 
 
