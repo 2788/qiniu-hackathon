@@ -12,7 +12,10 @@ export class SessionService {
     private sessionRepository: Repository<Session>,
   ) {}
 
-  async create(userId: string, createSessionDto: CreateSessionDto): Promise<Session> {
+  async create(
+    userId: string,
+    createSessionDto: CreateSessionDto,
+  ): Promise<Session> {
     const session = this.sessionRepository.create({
       userId,
       ...createSessionDto,
