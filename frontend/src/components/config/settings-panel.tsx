@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultModel } from '@/constants/chat';
 import { ModelSelector } from './model-selector';
 import type { Session } from '@/types/session';
 
@@ -10,7 +11,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ currentSession }: SettingsPanelProps) {
   return (
     <div className="space-y-6">
-      <ModelSelector currentModel={currentSession?.model || 'gpt-3.5-turbo'} />
+      <ModelSelector currentModel={currentSession?.model || defaultModel} />
       
       <div className="space-y-2">
         <h3 className="text-sm font-medium">Session Info</h3>

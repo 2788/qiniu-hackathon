@@ -18,18 +18,21 @@ export class AiService {
   ) {
     const apiKey = this.configService.get<string>('ai.openaiApiKey');
     this.openai = new OpenAI({
+      baseURL: 'https://openai.qiniu.com/v1',
       apiKey,
     });
   }
 
   async generateResponse(
     messages: ChatMessage[],
-    model: string = 'gpt-3.5-turbo',
+    model: string,
   ): Promise<string> {
     const userQuery = messages[messages.length - 1]?.content || '';
 
-    const relevantTickets =
-      await this.knowledgeService.searchRelevant(userQuery, 3);
+    const relevantTickets = await this.knowledgeService.searchRelevant(
+      userQuery,
+      3,
+    );
     const knowledgeContext =
       this.knowledgeService.formatAsContext(relevantTickets);
 

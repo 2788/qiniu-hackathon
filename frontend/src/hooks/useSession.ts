@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSessions, createSession as createSessionApi, deleteSession as deleteSessionApi, type CreateSessionDto } from '@/lib/api';
 import type { Session } from '@/types/session';
+import { defaultModel } from '@/constants/chat';
 
 export function useSession() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export function useSession() {
     }
   }, [searchParams, isInitialized, isPendingNewChat]);
 
-  const createSession = useCallback(async (model: string = 'gpt-3.5-turbo', title?: string) => {
+  const createSession = useCallback(async (model: string = defaultModel, title?: string) => {
     try {
       setIsLoading(true);
       setError(null);

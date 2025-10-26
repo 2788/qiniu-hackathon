@@ -48,7 +48,7 @@ function HomeContent() {
             isLoading={sessionLoading}
           />
         </Sidebar>
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col overflow-y-auto">
           <ChatArea
             messages={messages}
             isLoading={chatLoading}
