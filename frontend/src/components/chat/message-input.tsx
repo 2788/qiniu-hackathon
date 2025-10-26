@@ -46,7 +46,7 @@ export function MessageInput({ onSendMessage, isLoading }: MessageInputProps) {
         <Button
           onClick={handleSend}
           disabled={isLoading || !input.trim()}
-          className="self-end"
+          className="self-end cursor-pointer"
         >
           Send
         </Button>

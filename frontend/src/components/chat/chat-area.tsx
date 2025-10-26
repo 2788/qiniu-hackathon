@@ -18,8 +18,8 @@ export function ChatArea({ messages, isLoading, onSendMessage, messagesEndRef, s
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center">
-          <p className="text-lg mb-2">Welcome to AI Chat</p>
-          <p className="text-sm">Click "New Chat" to start a conversation</p>
+          <p className="text-lg mb-2">Welcome to Qiniu AI Chat</p>
+          <p className="text-sm">Click {'"'}New Chat{'"'} to start a conversation</p>
         </div>
       </div>
     );
