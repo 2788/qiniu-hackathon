@@ -18,6 +18,7 @@ function HomeContent() {
     startNewChat,
     deleteSession,
     selectSession,
+    updateSessionInList,
   } = useSession();
 
   const {
@@ -29,6 +30,7 @@ function HomeContent() {
     sessionId: currentSessionId,
     isPendingNewChat,
     createSession,
+    updateSessionInList,
   });
 
   return (

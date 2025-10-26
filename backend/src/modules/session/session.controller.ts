@@ -48,4 +48,13 @@ export class SessionController {
   async remove(@UserId() userId: string, @Param('id') id: string) {
     await this.sessionService.remove(id, userId);
   }
+
+  @Post(':id/generate-title')
+  async generateTitle(
+    @UserId() userId: string,
+    @Param('id') id: string,
+    @Body('firstMessage') firstMessage: string,
+  ) {
+    return this.sessionService.generateTitle(id, userId, firstMessage);
+  }
 }

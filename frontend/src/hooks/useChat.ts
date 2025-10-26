@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getMessages, sendMessageStream } from '@/lib/api';
+import { getMessages, sendMessageStream, generateSessionTitle } from '@/lib/api';
 import type { Message } from '@/types/chat';
+import type { Session } from '@/types/session';
 
 interface UseChatProps {
   sessionId: string | null;
   isPendingNewChat: boolean;
   createSession: (model?: string, title?: string) => Promise<{ id: string }>;
+  updateSessionInList?: (session: Session) => void;
 }
 
-export function useChat({ sessionId, isPendingNewChat, createSession }: UseChatProps) {
+export function useChat({ sessionId, isPendingNewChat, createSession, updateSessionInList }: UseChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +46,12 @@ export function useChat({ sessionId, isPendingNewChat, createSession }: UseChatP
       setError(null);
 
       let targetSessionId = sessionId;
+      let isNewSession = false;
       
       if (isPendingNewChat && !sessionId) {
         const newSession = await createSession();
         targetSessionId = newSession.id;
+        isNewSession = true;
       }
 
       if (!targetSessionId) {
@@ -98,12 +102,22 @@ export function useChat({ sessionId, isPendingNewChat, createSession }: UseChatP
           setIsLoading(false);
         }
       );
+
+      if (isNewSession && updateSessionInList) {
+        generateSessionTitle(targetSessionId, content.trim())
+          .then(updatedSession => {
+            updateSessionInList(updatedSession);
+          })
+          .catch(err => {
+            console.error('Failed to generate session title:', err);
+          });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
       setIsLoading(false);
       throw err;
     }
-  }, [sessionId, isPendingNewChat, createSession]);
+  }, [sessionId, isPendingNewChat, createSession, updateSessionInList]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
