@@ -248,12 +248,62 @@ export function ChatArea() {
 
 ### 3.5 API 调用
 
-使用标准 fetch API 进行 HTTP 请求：
+#### 3.5.1 SSE 流式消息发送 (推荐)
+
+使用 Server-Sent Events (SSE) 实现实时流式对话：
 
 ```typescript
 // lib/api.ts
 import { getUserId } from './user-id';
 
+export function sendMessageStream(
+  sessionId: string,
+  content: string,
+  onMessage: (data: { type: string; data: any }) => void,
+  onError?: (error: Error) => void,
+  onComplete?: () => void,
+): () => void {
+  const userId = getUserId();
+  const params = new URLSearchParams({
+    sessionId,
+    content,
+    userId,
+  });
+  
+  const eventSource = new EventSource(
+    `${API_BASE_URL}/api/messages/stream?${params}`
+  );
+
+  eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    onMessage(data);
+    
+    if (data.type === 'done') {
+      eventSource.close();
+      onComplete?.();
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    eventSource.close();
+    onError?.(new Error('SSE connection error'));
+  };
+
+  return () => eventSource.close();
+}
+```
+
+**SSE 事件类型**：
+- `user_message`: 用户消息已保存
+- `content`: AI 回复内容片段 (流式传输)
+- `done`: AI 回复完成，返回完整消息对象
+
+#### 3.5.2 标准 HTTP 消息发送 (向后兼容)
+
+使用标准 fetch API 进行 HTTP 请求：
+
+```typescript
+// lib/api.ts
 export async function sendMessage(sessionId: string, content: string) {
   const userId = getUserId();
   
@@ -278,6 +328,20 @@ export async function sendMessage(sessionId: string, content: string) {
 ```
 
 ### 3.6 数据流设计
+
+#### 3.6.1 SSE 流式消息流程 (新)
+
+```
+用户操作 → 触发事件 → 调用 Hook → 建立 SSE 连接 
+                                    ↓
+                            接收流式数据 (多次)
+                                    ↓
+                          实时更新状态并渲染
+                                    ↓
+                            连接关闭 → 最终状态确认
+```
+
+#### 3.6.2 标准 HTTP 消息流程 (旧)
 
 ```
 用户操作 → 触发事件 → 调用 Hook → 发起 HTTP 请求 → 等待响应 → 更新状态 → 重新渲染
@@ -370,15 +434,44 @@ async getSessions(@UserId() userId: string) {
 - 消息发送和接收
 - 消息历史查询
 - 与 AI 服务交互
+- SSE 流式消息传输
 
 **主要接口**:
 ```typescript
-POST   /api/messages               # 发送消息
+POST   /api/messages               # 发送消息 (标准 HTTP)
+GET    /api/messages/stream        # SSE 流式发送消息
 GET    /api/sessions/:id/messages  # 获取会话消息列表
 DELETE /api/messages/:id           # 删除消息
 ```
 
-**消息处理流程**:
+**SSE 流式消息处理流程** (推荐):
+```typescript
+@Sse('stream')
+sendMessageStream(
+  @Query('userId') userId: string,
+  @Query('sessionId') sessionId: string,
+  @Query('content') content: string,
+): Observable<MessageEvent> {
+  return new Observable<MessageEvent>((observer) => {
+    (async () => {
+      try {
+        for await (const event of this.messageService.sendMessageStream(
+          sessionId,
+          userId,
+          content,
+        )) {
+          observer.next({ data: event });
+        }
+        observer.complete();
+      } catch (error) {
+        observer.error(error);
+      }
+    })();
+  });
+}
+```
+
+**标准 HTTP 消息处理流程** (向后兼容):
 ```typescript
 @Post()
 async createMessage(
@@ -414,28 +507,45 @@ async createMessage(
 - 对接 AI API (OpenAI 等)
 - 多模型支持
 - 参数配置管理
+- 流式响应生成
 
 **核心服务**:
 ```typescript
 @Injectable()
 export class AIService {
+  // 标准响应生成 (向后兼容)
   async generateResponse(
-    prompt: string,
+    messages: ChatMessage[],
     model: string,
-    options?: AIOptions
   ): Promise<string> {
-    // 调用 AI API 生成响应
     const response = await this.openai.chat.completions.create({
-      model: model,
-      messages: [{ role: 'user', content: prompt }],
-      ...options,
+      model,
+      messages,
     });
     
-    return response.choices[0].message.content;
+    return response.choices[0]?.message?.content || '';
+  }
+  
+  // 流式响应生成 (新)
+  async *generateResponseStream(
+    messages: ChatMessage[],
+    model: string,
+  ): AsyncGenerator<string, void, unknown> {
+    const stream = await this.openai.chat.completions.create({
+      model,
+      messages,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        yield content;
+      }
+    }
   }
   
   async getSupportedModels(): Promise<Model[]> {
-    // 获取支持的模型列表
     return [
       { id: 'gpt-4', name: 'GPT-4' },
       { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
@@ -498,13 +608,36 @@ interface ApiResponse<T> {
 ```
 
 #### 4.4.3 用户识别
-- 前端在所有请求中携带 `X-User-Id` 请求头
-- 后端通过该请求头识别用户
+- 前端在标准 HTTP 请求中携带 `X-User-Id` 请求头
+- SSE 请求通过 URL 查询参数传递 `userId`
+- 后端通过请求头或查询参数识别用户
 - 无需 JWT 认证和会话管理
 
 ## 5. 数据流设计
 
 ### 5.1 消息发送流程
+
+#### 5.1.1 SSE 流式消息发送流程 (推荐)
+
+```
+1. 用户输入 → 2. 前端验证 → 3. 建立 SSE 连接 (URL 参数: userId, sessionId, content)
+                                    ↓
+                            4. 后端保存用户消息
+                                    ↓
+                            5. 发送 user_message 事件
+                                    ↓
+                            6. 调用 AI 流式生成
+                                    ↓
+                            7. 每收到 chunk 发送 content 事件
+                                    ↓
+8. 实时更新 UI (每次收到 content)  ←  
+                                    ↓
+                            9. AI 完成，保存助手消息
+                                    ↓
+10. 最终 UI 更新  ←  11. 发送 done 事件并关闭连接
+```
+
+#### 5.1.2 标准 HTTP 消息发送流程 (向后兼容)
 
 ```
 1. 用户输入 → 2. 前端验证 → 3. HTTP POST 请求 (带 X-User-Id)
@@ -607,13 +740,21 @@ volumes:
 
 ### 8.2 系统特性
 - **极简设计**: 移除所有非必要的复杂组件
-- **易于开发**: 使用标准 HTTP 请求，无需处理实时连接
+- **流式体验**: 使用 SSE 实现实时流式对话，提升用户体验
+- **向后兼容**: 保留标准 HTTP 接口，支持多种使用方式
 - **快速部署**: 最小化依赖，简化部署流程
 - **用户友好**: 无需注册即可使用，数据通过浏览器标识关联
 
 ### 8.3 架构特点
 - **无需认证**: 使用 localStorage 存储匿名用户 ID
-- **无需流式**: 使用标准 HTTP 请求和响应
+- **支持流式**: 使用 SSE 实现流式传输，同时保留标准 HTTP
 - **无需缓存**: 直接查询数据库
 - **仅 PostgreSQL**: 统一使用 PostgreSQL 数据库
 - **使用 shadcn/ui**: 无需自建 UI 组件系统
+
+### 8.4 SSE 实现优势
+- **实时反馈**: AI 回复实时显示，无需等待完整响应
+- **更好体验**: 用户可以立即看到 AI 的思考过程
+- **简单实现**: 使用标准 EventSource API，无需 WebSocket
+- **易于调试**: SSE 基于 HTTP，可以使用标准工具调试
+- **自动重连**: EventSource 自动处理连接中断和重连
